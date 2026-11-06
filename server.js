@@ -1,7 +1,9 @@
 const express = require('express');
 const cors = require('cors');
 const yts = require('yt-search');
-const axios = require('axios');
+const { exec } = require('child_process');
+const fs = require('fs');
+const path = require('path');
 
 const app = express();
 
@@ -13,12 +15,15 @@ app.use(cors({
 
 app.use(express.json());
 
-// Route de recherche stable
+const downloadsDir = path.join(__dirname, 'downloads');
+if (!fs.existsSync(downloadsDir)) {
+  fs.mkdirSync(downloadsDir, { recursive: true });
+}
+
+// Route de recherche
 app.get('/api/search', async (req, res) => {
   try {
     const query = req.query.q;
-    console.log(`[API SEARCH] Recherche pour : "${query}"`);
-    
     if (!query) return res.status(400).json({ error: 'Paramètre de recherche manquant' });
 
     const r = await yts(query);
@@ -31,38 +36,43 @@ app.get('/api/search', async (req, res) => {
 
     res.json(videos);
   } catch (err) {
-    console.error("[API SEARCH] Erreur:", err.message);
+    console.error("Erreur de recherche:", err);
     res.status(500).json({ error: 'Erreur lors de la recherche' });
   }
 });
 
-// Route de streaming optimisée et sans blocage
+// Route de streaming via yt-dlp (gère le flux direct sans crash)
 app.get('/api/stream', async (req, res) => {
   const videoId = req.query.id;
   if (!videoId) return res.status(400).json({ error: 'ID de vidéo manquant' });
 
-  try {
-    console.log(`[API STREAM] Récupération du flux pour la vidéo : ${videoId}`);
+  const videoURL = `https://www.youtube.com/watch?v=${videoId}`;
 
-    // Utilisation d'une API de passerelle open-source alternative pour un flux direct stable
-    const response = await axios.get(`https://pipedapi.kavin.rocks/streams/${videoId}`, {
-      headers: { 'User-Agent': 'Mozilla/5.0' },
-      timeout: 10000
+  try {
+    console.log(`[STREAM] Récupération du lien direct pour : ${videoId}`);
+
+    // On demande à yt-dlp de nous extraire l'URL audio directe en streaming
+    exec(`npx yt-dlp -g -f "bestaudio" "${videoURL}"`, (error, stdout, stderr) => {
+      if (error || !stdout) {
+        console.error("Erreur yt-dlp:", stderr);
+        if (!res.headersSent) {
+          return res.status(500).json({ error: 'Impossible de récupérer ce morceau' });
+        }
+        return;
+      }
+
+      const streamUrl = stdout.trim().split('\n')[0];
+      if (streamUrl) {
+        return res.redirect(streamUrl);
+      } else {
+        res.status(500).json({ error: 'Lien de flux introuvable' });
+      }
     });
 
-    const audioStreams = response.data.audioStreams;
-    if (audioStreams && audioStreams.length > 0) {
-      // Sélection du meilleur flux audio disponible
-      const bestAudio = audioStreams.reduce((prev, curr) => (curr.bitrate > prev.bitrate) ? curr : prev);
-      return res.redirect(bestAudio.url);
-    } else {
-      res.status(404).json({ error: 'Aucun flux audio disponible' });
-    }
-
   } catch (err) {
-    console.error("[API STREAM] Erreur:", err.message);
+    console.error("Erreur serveur:", err);
     if (!res.headersSent) {
-      res.status(500).json({ error: 'Impossible de lire ce morceau' });
+      res.status(500).json({ error: 'Erreur interne du serveur' });
     }
   }
 });

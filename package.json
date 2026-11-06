@@ -17,6 +17,7 @@
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "react-player": "^3.4.0",
+    "yt-dlp-exec": "^1.0.2",
     "yt-search": "^2.13.1"
   },
   "devDependencies": {
