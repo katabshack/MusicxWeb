@@ -7,6 +7,7 @@ const path = require('path');
 
 const app = express();
 
+// Configuration CORS permissive pour autoriser ton site Render et les requêtes locales
 app.use(cors({
   origin: '*',
   methods: ['GET', 'POST', 'OPTIONS'],
@@ -36,7 +37,7 @@ const cleanOldDownloads = (currentVideoId) => {
   }
 };
 
-// Route de recherche locale et en ligne via yt-search
+// Route de recherche via yt-search
 app.get('/api/search', async (req, res) => {
   try {
     const query = req.query.q;
