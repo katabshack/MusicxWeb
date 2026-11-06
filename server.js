@@ -36,23 +36,23 @@ app.get('/api/search', async (req, res) => {
   }
 });
 
-// Route de streaming directe via passerelle cloud (zéro crash, zéro worker)
+// Route de streaming optimisée et sans blocage
 app.get('/api/stream', async (req, res) => {
   const videoId = req.query.id;
   if (!videoId) return res.status(400).json({ error: 'ID de vidéo manquant' });
 
   try {
-    console.log(`[API STREAM] Redirection du flux pour la vidéo : ${videoId}`);
+    console.log(`[API STREAM] Récupération du flux pour la vidéo : ${videoId}`);
 
-    // Utilisation d'une passerelle audio publique stable pour obtenir le lien direct
-    const response = await axios.get(`https://piped.video/api/v1/streams/${videoId}`, {
-      headers: { 'User-Agent': 'Mozilla/5.0' }
+    // Utilisation d'une API de passerelle open-source alternative pour un flux direct stable
+    const response = await axios.get(`https://pipedapi.kavin.rocks/streams/${videoId}`, {
+      headers: { 'User-Agent': 'Mozilla/5.0' },
+      timeout: 10000
     });
 
-    // On récupère le flux audio le plus qualitatif
     const audioStreams = response.data.audioStreams;
     if (audioStreams && audioStreams.length > 0) {
-      // Tri pour prendre le meilleur débit audio
+      // Sélection du meilleur flux audio disponible
       const bestAudio = audioStreams.reduce((prev, curr) => (curr.bitrate > prev.bitrate) ? curr : prev);
       return res.redirect(bestAudio.url);
     } else {
