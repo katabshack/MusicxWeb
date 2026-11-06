@@ -49,7 +49,7 @@ export default function App() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Utilisation de Refs pour garder les valeurs fraîches à l'intérieur des gestionnaires d'événements audio en arrière-plan (écran éteint)
+  // Refs pour garder les valeurs à jour dans les écouteurs d'événements en arrière-plan
   const currentPlaylistRef = useRef<Track[]>([]);
   const currentTrackIndexRef = useRef<number | null>(null);
   const isRepeatRef = useRef(isRepeat);
@@ -61,7 +61,6 @@ export default function App() {
     } catch (e) {}
   }, [favorites]);
 
-  // Si on est en mode bibliothèque, on filtre les favoris selon la recherche locale. Sinon, on prend les résultats YouTube.
   const filteredLibrary = favorites.filter(track => 
     track.title.toLowerCase().includes(query.toLowerCase()) || 
     track.artist.toLowerCase().includes(query.toLowerCase())
@@ -72,7 +71,7 @@ export default function App() {
     ? currentPlaylist[currentTrackIndex] 
     : null;
 
-  // Mise à jour synchrone des refs pour les écouteurs d'événements natifs
+  // Mise à jour synchrone des Refs
   useEffect(() => {
     currentPlaylistRef.current = currentPlaylist;
   }, [currentPlaylist]);
@@ -89,7 +88,7 @@ export default function App() {
     isShuffleRef.current = isShuffle;
   }, [isShuffle]);
 
-  // Gestion de la recherche YouTube (uniquement sur l'accueil)
+  // Recherche YouTube (uniquement sur l'accueil)
   useEffect(() => {
     if (activeTab !== 'home') return;
 
@@ -117,12 +116,67 @@ export default function App() {
     };
   }, [query, activeTab]);
 
-  // Changement d'onglet : on vide la recherche pour repartir sur une base propre
   const handleTabChange = (tab: 'home' | 'library') => {
     setActiveTab(tab);
     setQuery('');
     setCurrentTrackIndex(null);
   };
+
+  const handleNext = () => {
+    const playlist = currentPlaylistRef.current;
+    const currentIndex = currentTrackIndexRef.current;
+    
+    if (playlist.length === 0) return;
+    
+    if (isShuffleRef.current) {
+      const randomIndex = Math.floor(Math.random() * playlist.length);
+      setCurrentTrackIndex(randomIndex);
+    } else if (currentIndex !== null) {
+      const nextIndex = (currentIndex + 1) % playlist.length;
+      setCurrentTrackIndex(nextIndex);
+    }
+  };
+
+  const handlePrev = () => {
+    if (currentPlaylist.length === 0) return;
+    if (currentTrackIndex !== null) {
+      const prevIndex = (currentTrackIndex - 1 + currentPlaylist.length) % currentPlaylist.length;
+      setCurrentTrackIndex(prevIndex);
+    }
+  };
+
+  // Intégration de la Media Session API pour forcer l'arrière-plan mobile et l'écran de verrouillage
+  useEffect(() => {
+    if ('mediaSession' in navigator && currentTrack) {
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: currentTrack.title,
+        artist: currentTrack.artist,
+        artwork: [{ src: currentTrack.cover, sizes: '512x512', type: 'image/jpeg' }]
+      });
+
+      navigator.mediaSession.setActionHandler('play', () => {
+        if (audioRef.current) {
+          audioRef.current.play();
+          setIsPlaying(true);
+        }
+      });
+
+      navigator.mediaSession.setActionHandler('pause', () => {
+        if (audioRef.current) {
+          audioRef.current.pause();
+          setIsPlaying(false);
+        }
+      });
+
+      navigator.mediaSession.setActionHandler('previoustrack', () => {
+        handlePrev();
+      });
+
+      navigator.mediaSession.setActionHandler('nexttrack', () => {
+        handleNext();
+      });
+    }
+  }, [currentTrack]);
 
   const handleCardClick = (index: number) => {
     const clickedTrack = currentPlaylist[index];
@@ -182,30 +236,7 @@ export default function App() {
     }
   };
 
-  const handleNext = () => {
-    const playlist = currentPlaylistRef.current;
-    const currentIndex = currentTrackIndexRef.current;
-    
-    if (playlist.length === 0) return;
-    
-    if (isShuffleRef.current) {
-      const randomIndex = Math.floor(Math.random() * playlist.length);
-      setCurrentTrackIndex(randomIndex);
-    } else if (currentIndex !== null) {
-      const nextIndex = (currentIndex + 1) % playlist.length;
-      setCurrentTrackIndex(nextIndex);
-    }
-  };
-
-  const handlePrev = () => {
-    if (currentPlaylist.length === 0) return;
-    if (currentTrackIndex !== null) {
-      const prevIndex = (currentTrackIndex - 1 + currentPlaylist.length) % currentPlaylist.length;
-      setCurrentTrackIndex(prevIndex);
-    }
-  };
-
-  // Enregistrement de l'écouteur natif "ended" sur l'élément audio pour garantir l'enchaînement même écran éteint
+  // Gestion de la fin d'un morceau via l'écouteur natif
   useEffect(() => {
     const audioElement = audioRef.current;
     if (!audioElement) return;
@@ -278,7 +309,6 @@ export default function App() {
           </div>
         </div>
 
-        {/* La barre de recherche reste toujours active, adaptée selon l'onglet */}
         <div className="mx-search-box">
           <Search className="mx-search-icon" />
           <input
