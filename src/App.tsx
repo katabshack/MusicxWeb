@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Search, Play, Pause, Music, Sparkles, Loader2, SkipBack, SkipForward, Home, Library, Heart, Shuffle, Repeat, Volume2, VolumeX } from 'lucide-react';
+import { Search, Play, Pause, Music, Sparkles, Loader2, SkipBack, SkipForward, Home, Library, Heart, Volume2, VolumeX } from 'lucide-react';
 import axios from 'axios';
 
 interface Track {
@@ -43,8 +43,6 @@ export default function App() {
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(1);
   const [isMuted, setIsMuted] = useState(false);
-  const [isShuffle, setIsShuffle] = useState(false);
-  const [isRepeat, setIsRepeat] = useState(false);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -138,10 +136,7 @@ export default function App() {
 
   const handleNext = () => {
     if (currentPlaylist.length === 0) return;
-    if (isShuffle) {
-      const randomIndex = Math.floor(Math.random() * currentPlaylist.length);
-      setCurrentTrackIndex(randomIndex);
-    } else if (currentTrackIndex !== null) {
+    if (currentTrackIndex !== null) {
       const nextIndex = (currentTrackIndex + 1) % currentPlaylist.length;
       setCurrentTrackIndex(nextIndex);
     }
@@ -156,7 +151,7 @@ export default function App() {
   };
 
   const toggleFavorite = (track: Track, e: React.MouseEvent) => {
-    e.stopPropagation(); // Empêche le clic de lancer la musique
+    e.stopPropagation();
     setFavorites(prev => {
       const exists = prev.some(t => t.id === track.id);
       if (exists) {
@@ -179,17 +174,9 @@ export default function App() {
         ref={audioRef}
         onTimeUpdate={() => audioRef.current && setCurrentTime(audioRef.current.currentTime)}
         onLoadedMetadata={() => audioRef.current && setDuration(audioRef.current.duration)}
-        onEnded={() => {
-          if (isRepeat && audioRef.current) {
-            audioRef.current.currentTime = 0;
-            audioRef.current.play();
-          } else {
-            handleNext();
-          }
-        }}
+        onEnded={() => handleNext()}
       />
 
-      {/* Header responsive */}
       <header className="mx-header">
         <div className="mx-brand-row">
           <div className="mx-brand">
@@ -199,7 +186,6 @@ export default function App() {
             <span className="mx-title">MusicX</span>
           </div>
 
-          {/* Onglets visibles directement sur mobile et desktop */}
           <div className="mx-tabs" style={{ width: 'auto' }}>
             <button
               onClick={() => setActiveTab('home')}
@@ -218,7 +204,6 @@ export default function App() {
           </div>
         </div>
 
-        {/* Barre de recherche plein format */}
         <div className="mx-search-box">
           <Search className="mx-search-icon" />
           <input
@@ -232,7 +217,6 @@ export default function App() {
         </div>
       </header>
 
-      {/* Contenu */}
       <main className="mx-main">
         {activeTab === 'home' ? (
           <div>
@@ -335,7 +319,6 @@ export default function App() {
         )}
       </main>
 
-      {/* Footer / Lecteur fixe et visible sur mobile */}
       {currentTrack && (
         <footer className="mx-footer">
           <div className="mx-player-top-mobile">
@@ -349,7 +332,6 @@ export default function App() {
               </div>
             </div>
 
-            {/* Contrôles intégrés sur la même ligne sur mobile pour un gain d'espace */}
             <div className="mx-player-controls" style={{ gap: '10px' }}>
               <button onClick={handlePrev} className="mx-ctrl-btn">
                 <SkipBack size={18} fill="currentColor" />
