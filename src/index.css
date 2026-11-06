@@ -1,5 +1,3 @@
-@import "tailwindcss";
-
 * {
   box-sizing: border-box;
   margin: 0;
@@ -10,9 +8,11 @@ body {
   background-color: #121212;
   color: #ffffff;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-  overflow-x: hidden;
+  overflow: hidden;
+  height: 100vh;
 }
 
+/* Scrollbar personnalisée */
 ::-webkit-scrollbar {
   width: 8px;
 }
@@ -22,4 +22,451 @@ body {
 ::-webkit-scrollbar-thumb {
   background: #282828;
   border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #3f3f46;
+}
+
+/* Layout Principal */
+.mx-app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background-color: #121212;
+  color: #ffffff;
+  user-select: none;
+}
+
+/* Header */
+.mx-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px;
+  background-color: #18181b;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  z-index: 10;
+}
+
+.mx-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.mx-logo-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #dc2626, #e11d48);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 10px 15px -3px rgba(220, 38, 38, 0.3);
+}
+
+.mx-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: 0.025em;
+  background: linear-gradient(to right, #ffffff, #a1a1aa);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Recherche */
+.mx-search-box {
+  position: relative;
+  width: 100%;
+  max-width: 450px;
+  margin: 0 24px;
+}
+
+.mx-search-icon {
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 16px;
+  height: 16px;
+  color: #a1a1aa;
+}
+
+.mx-search-input {
+  width: 100%;
+  background-color: rgba(24, 24, 27, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 9999px;
+  padding: 10px 16px 10px 44px;
+  font-size: 0.875rem;
+  color: #ffffff;
+  outline: none;
+  transition: all 0.2s;
+}
+
+.mx-search-input:focus {
+  border-color: rgba(239, 68, 68, 0.5);
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2);
+}
+
+.mx-loader-search {
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 16px;
+  height: 16px;
+  color: #ef4444;
+  animation: spin 1s linear infinite;
+}
+
+/* Onglets */
+.mx-tabs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background-color: rgba(24, 24, 27, 0.6);
+  padding: 4px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.mx-tab-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  background: transparent;
+  border: none;
+  color: #a1a1aa;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.mx-tab-btn:hover {
+  color: #ffffff;
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.mx-tab-btn.active {
+  background-color: #dc2626;
+  color: #ffffff;
+  box-shadow: 0 10px 15px -3px rgba(220, 38, 38, 0.3);
+}
+
+/* Corps Principal */
+.mx-main {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+}
+
+.mx-section-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin-bottom: 16px;
+  color: #e4e4e7;
+}
+
+.mx-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+@media (min-width: 640px) { .mx-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (min-width: 768px) { .mx-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (min-width: 1024px) { .mx-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
+
+/* Cartes de musique */
+.mx-card {
+  position: relative;
+  background-color: rgba(24, 24, 27, 0.4);
+  padding: 12px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  flex-direction: column;
+}
+
+.mx-card:hover {
+  background-color: #18181b;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.mx-card.active {
+  border-color: rgba(239, 68, 68, 0.5);
+  background-color: rgba(24, 24, 27, 0.8);
+  box-shadow: 0 10px 15px -3px rgba(239, 68, 68, 0.1);
+}
+
+.mx-card-img-wrapper {
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 12px;
+  background-color: #27272a;
+}
+
+.mx-card-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s;
+}
+
+.mx-card:hover .mx-card-img {
+  transform: scale(1.05);
+}
+
+.mx-fav-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  padding: 8px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.4);
+  border: none;
+  color: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+  transition: all 0.2s;
+  opacity: 0;
+}
+
+.mx-card:hover .mx-fav-btn, .mx-fav-btn.active {
+  opacity: 1;
+}
+
+.mx-fav-btn.active {
+  background: #dc2626;
+  color: #ffffff;
+}
+
+.mx-play-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.mx-card:hover .mx-play-overlay, .mx-card.active .mx-play-overlay {
+  opacity: 1;
+}
+
+.mx-play-btn-circle {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: #dc2626;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 10px 15px -3px rgba(220, 38, 38, 0.5);
+}
+
+.mx-card-title {
+  font-size: 0.875rem;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #e4e4e7;
+}
+
+.mx-card:hover .mx-card-title {
+  color: #ffffff;
+}
+
+.mx-card-artist {
+  font-size: 0.75rem;
+  color: #71717a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 4px;
+}
+
+/* États vides */
+.mx-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 96px 0;
+  text-align: center;
+}
+
+.mx-empty-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 16px;
+  background-color: #18181b;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+  color: #ef4444;
+}
+
+/* Lecteur Inférieur (Footer) */
+.mx-footer {
+  height: 96px;
+  background-color: #18181b;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  z-index: 20;
+}
+
+.mx-player-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 25%;
+  min-width: 200px;
+}
+
+.mx-player-cover {
+  width: 56px;
+  height: 56px;
+  border-radius: 12px;
+  overflow: hidden;
+  background-color: #27272a;
+  flex-shrink: 0;
+}
+
+.mx-player-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.mx-player-meta {
+  overflow: hidden;
+}
+
+.mx-player-title {
+  font-size: 0.875rem;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #ffffff;
+}
+
+.mx-player-artist {
+  font-size: 0.75rem;
+  color: #71717a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 2px;
+}
+
+/* Centre du lecteur */
+.mx-player-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 576px;
+  width: 50%;
+  gap: 8px;
+}
+
+.mx-player-controls {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.mx-ctrl-btn {
+  background: transparent;
+  border: none;
+  color: #a1a1aa;
+  cursor: pointer;
+  transition: color 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mx-ctrl-btn:hover {
+  color: #ffffff;
+}
+
+.mx-ctrl-btn.active {
+  color: #ef4444;
+}
+
+.mx-play-main-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: #ffffff;
+  color: #000000;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.2s, background-color 0.2s;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+}
+
+.mx-play-main-btn:hover {
+  transform: scale(1.05);
+}
+
+.mx-play-main-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Barres de progression / volume */
+.mx-progress-container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  font-size: 0.75rem;
+  color: #71717a;
+}
+
+.mx-range-input {
+  flex: 1;
+  height: 4px;
+  background-color: #27272a;
+  border-radius: 9999px;
+  appearance: none;
+  cursor: pointer;
+  accent-color: #dc2626;
+}
+
+.mx-player-right {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  width: 25%;
+  min-width: 200px;
+}
+
+@keyframes spin {
+  from { transform: translateY(-50%) rotate(0deg); }
+  to { transform: translateY(-50%) rotate(360deg); }
 }

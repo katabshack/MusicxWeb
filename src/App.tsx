@@ -9,12 +9,10 @@ interface Track {
   cover: string;
 }
 
-// URL de ton tunnel Ngrok actif
 const SERVER_URL = import.meta.env.PROD 
   ? 'https://foothold-magnitude-wife.ngrok-free.dev' 
   : 'http://localhost:3001';
 
-// Configuration Axios globale pour contourner l'avertissement de Ngrok
 const api = axios.create({
   baseURL: SERVER_URL,
   headers: {
@@ -27,7 +25,6 @@ export default function App() {
   const [query, setQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Track[]>([]);
 
-  // Persistance des favoris via localStorage
   const [favorites, setFavorites] = useState<Track[]>(() => {
     try {
       const saved = localStorage.getItem('musicx_favorites');
@@ -52,7 +49,6 @@ export default function App() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Sauvegarde des favoris
   useEffect(() => {
     try {
       localStorage.setItem('musicx_favorites', JSON.stringify(favorites));
@@ -64,7 +60,6 @@ export default function App() {
     ? currentPlaylist[currentTrackIndex] 
     : null;
 
-  // Gestion de la recherche instantanée avec l'instance 'api' (Ngrok compatible)
   useEffect(() => {
     if (!query.trim()) {
       setSearchResults([]);
@@ -90,14 +85,12 @@ export default function App() {
     };
   }, [query]);
 
-  // Lancer la lecture d'un morceau
   const handlePlayTrack = (index: number) => {
     setCurrentTrackIndex(index);
     setIsPlaying(true);
     setIsLoadingTrack(true);
   };
 
-  // Changement de source audio vers le serveur local / ngrok via Blob Fetch
   useEffect(() => {
     if (currentTrack && audioRef.current) {
       const streamUrl = `${SERVER_URL}/api/stream?id=${currentTrack.id}`;
@@ -181,8 +174,7 @@ export default function App() {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-[#121212] text-white font-sans select-none overflow-hidden">
-      {/* Élément Audio Caché */}
+    <div className="mx-app">
       <audio
         ref={audioRef}
         onTimeUpdate={() => audioRef.current && setCurrentTime(audioRef.current.currentTime)}
@@ -197,79 +189,65 @@ export default function App() {
         }}
       />
 
-      {/* Barre de Navigation Supérieure */}
-      <header className="flex items-center justify-between px-6 py-4 bg-[#18181b] border-b border-white/5 z-10">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-red-600 to-rose-500 flex items-center justify-center shadow-lg shadow-red-600/20">
-            <Music className="w-5 h-5 text-white" />
+      {/* Header */}
+      <header className="mx-header">
+        <div className="mx-brand">
+          <div className="mx-logo-icon">
+            <Music size={20} color="#ffffff" />
           </div>
-          <span className="text-xl font-bold tracking-wide bg-gradient-to-r from-white via-zinc-200 to-zinc-400 bg-clip-text text-transparent">
-            MusicX
-          </span>
+          <span className="mx-title">MusicX</span>
         </div>
 
-        {/* Barre de recherche */}
-        <div className="relative w-full max-w-md mx-6">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+        <div className="mx-search-box">
+          <Search className="mx-search-icon" />
           <input
             type="text"
             placeholder="Rechercher un artiste, un titre..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            className="w-full bg-zinc-900/80 border border-white/10 rounded-full pl-11 pr-4 py-2 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-red-500/50 focus:ring-2 focus:ring-red-500/20 transition-all"
+            className="mx-search-input"
           />
-          {loading && (
-            <Loader2 className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-red-500 animate-spin" />
-          )}
+          {loading && <Loader2 className="mx-loader-search" />}
         </div>
 
-        {/* Onglets de navigation */}
-        <div className="flex items-center gap-2 bg-zinc-900/60 p-1 rounded-xl border border-white/5">
+        <div className="mx-tabs">
           <button
             onClick={() => setActiveTab('home')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-              activeTab === 'home' 
-                ? 'bg-red-600 text-white shadow-lg shadow-red-600/30' 
-                : 'text-zinc-400 hover:text-white hover:bg-white/5'
-            }`}
+            className={`mx-tab-btn ${activeTab === 'home' ? 'active' : ''}`}
           >
-            <Home className="w-4 h-4" />
+            <Home size={16} />
             <span>Accueil</span>
           </button>
           <button
             onClick={() => setActiveTab('library')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-              activeTab === 'library' 
-                ? 'bg-red-600 text-white shadow-lg shadow-red-600/30' 
-                : 'text-zinc-400 hover:text-white hover:bg-white/5'
-            }`}
+            className={`mx-tab-btn ${activeTab === 'library' ? 'active' : ''}`}
           >
-            <Library className="w-4 h-4" />
+            <Library size={16} />
             <span>Biblio ({favorites.length})</span>
           </button>
         </div>
       </header>
 
-      {/* Contenu Principal */}
-      <main className="flex-1 overflow-y-auto px-6 py-6">
+      {/* Contenu */}
+      <main className="mx-main">
         {activeTab === 'home' ? (
           <div>
-            <h2 className="text-lg font-semibold mb-4 text-zinc-200">
-              {query ? `Résultats de recherche` : "Découverte"}
+            <h2 className="mx-section-title">
+              {query ? 'Résultats de recherche' : 'Découverte'}
             </h2>
 
             {searchResults.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-24 text-center">
-                <div className="w-16 h-16 rounded-2xl bg-zinc-900 border border-white/5 flex items-center justify-center mb-4 text-red-500 shadow-inner">
-                  <Sparkles className="w-8 h-8" />
+              <div className="mx-empty-state">
+                <div className="mx-empty-icon">
+                  <Sparkles size={32} />
                 </div>
-                <h3 className="text-xl font-bold mb-2">Bienvenue sur MusicX</h3>
-                <p className="text-zinc-500 text-sm max-w-sm">
+                <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '8px' }}>Bienvenue sur MusicX</h3>
+                <p style={{ color: '#71717a', fontSize: '0.875rem', maxWidth: '320px' }}>
                   Recherche un artiste pour lancer la liste de lecture en continu.
                 </p>
               </div>
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+              <div className="mx-grid">
                 {searchResults.map((track, index) => {
                   const isFav = favorites.some(t => t.id === track.id);
                   const isCurrent = currentTrack?.id === track.id;
@@ -278,38 +256,24 @@ export default function App() {
                     <div
                       key={track.id}
                       onClick={() => handlePlayTrack(index)}
-                      className={`group relative bg-zinc-900/40 hover:bg-zinc-900 p-3 rounded-2xl border transition-all cursor-pointer flex flex-col ${
-                        isCurrent ? 'border-red-500/50 bg-zinc-900/80 shadow-lg shadow-red-500/10' : 'border-white/5 hover:border-white/10'
-                      }`}
+                      className={`mx-card ${isCurrent ? 'active' : ''}`}
                     >
-                      <div className="relative aspect-square rounded-xl overflow-hidden mb-3 bg-zinc-800">
-                        <img 
-                          src={track.cover} 
-                          alt={track.title}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                        />
+                      <div className="mx-card-img-wrapper">
+                        <img src={track.cover} alt={track.title} className="mx-card-img" />
                         <button
                           onClick={(e) => toggleFavorite(track, e)}
-                          className={`absolute top-2 right-2 p-2 rounded-xl backdrop-blur-md transition-all ${
-                            isFav ? 'bg-red-600 text-white' : 'bg-black/40 text-white/70 hover:text-white opacity-0 group-hover:opacity-100'
-                          }`}
+                          className={`mx-fav-btn ${isFav ? 'active' : ''}`}
                         >
-                          <Heart className={`w-4 h-4 ${isFav ? 'fill-white' : ''}`} />
+                          <Heart size={16} fill={isFav ? '#ffffff' : 'none'} />
                         </button>
-                        <div className={`absolute inset-0 bg-black/40 backdrop-blur-[2px] items-center justify-center transition-opacity ${
-                          isCurrent ? 'flex' : 'opacity-0 group-hover:flex'
-                        }`}>
-                          <div className="w-10 h-10 rounded-full bg-red-600 text-white flex items-center justify-center shadow-lg shadow-red-600/50">
-                            {isCurrent && isPlaying ? <Pause className="w-5 h-5 fill-white" /> : <Play className="w-5 h-5 fill-white ml-0.5" />}
+                        <div className="mx-play-overlay">
+                          <div className="mx-play-btn-circle">
+                            {isCurrent && isPlaying ? <Pause size={18} fill="#ffffff" /> : <Play size={18} fill="#ffffff" style={{ marginLeft: '2px' }} />}
                           </div>
                         </div>
                       </div>
-                      <h4 className="font-medium text-sm truncate text-zinc-200 group-hover:text-white">
-                        {track.title}
-                      </h4>
-                      <p className="text-xs text-zinc-500 truncate mt-1">
-                        {track.artist}
-                      </p>
+                      <h4 className="mx-card-title">{track.title}</h4>
+                      <p className="mx-card-artist">{track.artist}</p>
                     </div>
                   );
                 })}
@@ -318,19 +282,19 @@ export default function App() {
           </div>
         ) : (
           <div>
-            <h2 className="text-lg font-semibold mb-4 text-zinc-200">Ma Bibliothèque</h2>
+            <h2 className="mx-section-title">Ma Bibliothèque</h2>
             {favorites.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-24 text-center">
-                <div className="w-16 h-16 rounded-2xl bg-zinc-900 border border-white/5 flex items-center justify-center mb-4 text-zinc-500">
-                  <Heart className="w-8 h-8" />
+              <div className="mx-empty-state">
+                <div className="mx-empty-icon">
+                  <Heart size={32} />
                 </div>
-                <h3 className="text-xl font-bold mb-2">Aucun favori pour l'instant</h3>
-                <p className="text-zinc-500 text-sm max-w-sm">
+                <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '8px' }}>Aucun favori pour l'instant</h3>
+                <p style={{ color: '#71717a', fontSize: '0.875rem', maxWidth: '320px' }}>
                   Ajoute des musiques à tes favoris en cliquant sur le cœur lors de tes recherches.
                 </p>
               </div>
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+              <div className="mx-grid">
                 {favorites.map((track, index) => {
                   const isCurrent = currentTrack?.id === track.id;
 
@@ -338,36 +302,24 @@ export default function App() {
                     <div
                       key={track.id}
                       onClick={() => handlePlayTrack(index)}
-                      className={`group relative bg-zinc-900/40 hover:bg-zinc-900 p-3 rounded-2xl border transition-all cursor-pointer flex flex-col ${
-                        isCurrent ? 'border-red-500/50 bg-zinc-900/80 shadow-lg shadow-red-500/10' : 'border-white/5 hover:border-white/10'
-                      }`}
+                      className={`mx-card ${isCurrent ? 'active' : ''}`}
                     >
-                      <div className="relative aspect-square rounded-xl overflow-hidden mb-3 bg-zinc-800">
-                        <img 
-                          src={track.cover} 
-                          alt={track.title}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                        />
+                      <div className="mx-card-img-wrapper">
+                        <img src={track.cover} alt={track.title} className="mx-card-img" />
                         <button
                           onClick={(e) => toggleFavorite(track, e)}
-                          className="absolute top-2 right-2 p-2 rounded-xl backdrop-blur-md bg-red-600 text-white transition-all"
+                          className="mx-fav-btn active"
                         >
-                          <Heart className="w-4 h-4 fill-white" />
+                          <Heart size={16} fill="#ffffff" />
                         </button>
-                        <div className={`absolute inset-0 bg-black/40 backdrop-blur-[2px] items-center justify-center transition-opacity ${
-                          isCurrent ? 'flex' : 'opacity-0 group-hover:flex'
-                        }`}>
-                          <div className="w-10 h-10 rounded-full bg-red-600 text-white flex items-center justify-center shadow-lg shadow-red-600/50">
-                            {isCurrent && isPlaying ? <Pause className="w-5 h-5 fill-white" /> : <Play className="w-5 h-5 fill-white ml-0.5" />}
+                        <div className="mx-play-overlay">
+                          <div className="mx-play-btn-circle">
+                            {isCurrent && isPlaying ? <Pause size={18} fill="#ffffff" /> : <Play size={18} fill="#ffffff" style={{ marginLeft: '2px' }} />}
                           </div>
                         </div>
                       </div>
-                      <h4 className="font-medium text-sm truncate text-zinc-200 group-hover:text-white">
-                        {track.title}
-                      </h4>
-                      <p className="text-xs text-zinc-500 truncate mt-1">
-                        {track.artist}
-                      </p>
+                      <h4 className="mx-card-title">{track.title}</h4>
+                      <p className="mx-card-artist">{track.artist}</p>
                     </div>
                   );
                 })}
@@ -377,64 +329,49 @@ export default function App() {
         )}
       </main>
 
-      {/* Barre de Lecture Inférieure (Player) */}
+      {/* Footer / Lecteur */}
       {currentTrack && (
-        <footer className="h-24 bg-[#18181b] border-t border-white/5 px-6 flex items-center justify-between gap-4 z-20">
-          {/* Info Piste */}
-          <div className="flex items-center gap-3 w-1/4 min-w-[200px]">
-            <div className="relative w-14 h-14 rounded-xl overflow-hidden bg-zinc-800 flex-shrink-0">
-              <img src={currentTrack.cover} alt={currentTrack.title} className="w-full h-full object-cover" />
+        <footer className="mx-footer">
+          <div className="mx-player-left">
+            <div className="mx-player-cover">
+              <img src={currentTrack.cover} alt={currentTrack.title} />
             </div>
-            <div className="overflow-hidden">
-              <h4 className="text-sm font-medium truncate text-white">{currentTrack.title}</h4>
-              <p className="text-xs text-zinc-500 truncate mt-0.5">{currentTrack.artist}</p>
+            <div className="mx-player-meta">
+              <h4 className="mx-player-title">{currentTrack.title}</h4>
+              <p className="mx-player-artist">{currentTrack.artist}</p>
             </div>
           </div>
 
-          {/* Contrôles du Lecteur */}
-          <div className="flex flex-col items-center max-w-xl w-2/4 gap-2">
-            <div className="flex items-center gap-5">
-              <button 
-                onClick={() => setIsShuffle(!isShuffle)}
-                className={`text-zinc-400 hover:text-white transition-colors ${isShuffle ? 'text-red-500' : ''}`}
-              >
-                <Shuffle className="w-4 h-4" />
+          <div className="mx-player-center">
+            <div className="mx-player-controls">
+              <button onClick={() => setIsShuffle(!isShuffle)} className={`mx-ctrl-btn ${isShuffle ? 'active' : ''}`}>
+                <Shuffle size={16} />
               </button>
-              <button 
-                onClick={handlePrev}
-                className="text-zinc-300 hover:text-white transition-colors"
-              >
-                <SkipBack className="w-5 h-5 fill-current" />
+              <button onClick={handlePrev} className="mx-ctrl-btn">
+                <SkipBack size={20} fill="currentColor" />
               </button>
               <button
                 onClick={togglePlayPause}
                 disabled={isLoadingTrack}
-                className="w-10 h-10 rounded-full bg-white text-black flex items-center justify-center hover:scale-105 transition-all shadow-lg"
+                className="mx-play-main-btn"
               >
                 {isLoadingTrack ? (
-                  <Loader2 className="w-5 h-5 animate-spin text-black" />
+                  <Loader2 size={18} className="animate-spin" style={{ color: '#000' }} />
                 ) : isPlaying ? (
-                  <Pause className="w-5 h-5 fill-current" />
+                  <Pause size={18} fill="currentColor" />
                 ) : (
-                  <Play className="w-5 h-5 fill-current ml-0.5" />
+                  <Play size={18} fill="currentColor" style={{ marginLeft: '2px' }} />
                 )}
               </button>
-              <button 
-                onClick={handleNext}
-                className="text-zinc-300 hover:text-white transition-colors"
-              >
-                <SkipForward className="w-5 h-5 fill-current" />
+              <button onClick={handleNext} className="mx-ctrl-btn">
+                <SkipForward size={20} fill="currentColor" />
               </button>
-              <button 
-                onClick={() => setIsRepeat(!isRepeat)}
-                className={`text-zinc-400 hover:text-white transition-colors ${isRepeat ? 'text-red-500' : ''}`}
-              >
-                <Repeat className="w-4 h-4" />
+              <button onClick={() => setIsRepeat(!isRepeat)} className={`mx-ctrl-btn ${isRepeat ? 'active' : ''}`}>
+                <Repeat size={16} />
               </button>
             </div>
 
-            {/* Barre de progression */}
-            <div className="flex items-center gap-3 w-full text-xs text-zinc-500">
+            <div className="mx-progress-container">
               <span>{formatTime(currentTime)}</span>
               <input
                 type="range"
@@ -446,23 +383,22 @@ export default function App() {
                   if (audioRef.current) audioRef.current.currentTime = time;
                   setCurrentTime(time);
                 }}
-                className="flex-1 h-1 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-red-600 hover:accent-red-500"
+                className="mx-range-input"
               />
               <span>{formatTime(duration)}</span>
             </div>
           </div>
 
-          {/* Volume */}
-          <div className="flex items-center justify-end gap-3 w-1/4 min-w-[200px]">
+          <div className="mx-player-right">
             <button 
               onClick={() => {
                 const newMuted = !isMuted;
                 setIsMuted(newMuted);
                 if (audioRef.current) audioRef.current.muted = newMuted;
               }}
-              className="text-zinc-400 hover:text-white transition-colors"
+              className="mx-ctrl-btn"
             >
-              {isMuted || volume === 0 ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+              {isMuted || volume === 0 ? <VolumeX size={20} /> : <Volume2 size={20} />}
             </button>
             <input
               type="range"
@@ -476,7 +412,8 @@ export default function App() {
                 setIsMuted(val === 0);
                 if (audioRef.current) audioRef.current.volume = val;
               }}
-              className="w-24 h-1 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-red-600 hover:accent-red-500"
+              className="mx-range-input"
+              style={{ width: '96px' }}
             />
           </div>
         </footer>
