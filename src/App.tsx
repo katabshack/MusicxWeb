@@ -49,7 +49,6 @@ export default function App() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Refs pour garder les valeurs à jour dans les écouteurs d'événements en arrière-plan
   const currentPlaylistRef = useRef<Track[]>([]);
   const currentTrackIndexRef = useRef<number | null>(null);
   const isRepeatRef = useRef(isRepeat);
@@ -71,7 +70,6 @@ export default function App() {
     ? currentPlaylist[currentTrackIndex] 
     : null;
 
-  // Mise à jour synchrone des Refs
   useEffect(() => {
     currentPlaylistRef.current = currentPlaylist;
   }, [currentPlaylist]);
@@ -88,7 +86,6 @@ export default function App() {
     isShuffleRef.current = isShuffle;
   }, [isShuffle]);
 
-  // Recherche YouTube (uniquement sur l'accueil)
   useEffect(() => {
     if (activeTab !== 'home') return;
 
@@ -138,44 +135,57 @@ export default function App() {
   };
 
   const handlePrev = () => {
-    if (currentPlaylist.length === 0) return;
-    if (currentTrackIndex !== null) {
-      const prevIndex = (currentTrackIndex - 1 + currentPlaylist.length) % currentPlaylist.length;
+    const playlist = currentPlaylistRef.current;
+    const currentIndex = currentTrackIndexRef.current;
+
+    if (playlist.length === 0) return;
+    if (currentIndex !== null) {
+      const prevIndex = (currentIndex - 1 + playlist.length) % playlist.length;
       setCurrentTrackIndex(prevIndex);
     }
   };
 
-  // Intégration de la Media Session API pour forcer l'arrière-plan mobile et l'écran de verrouillage
+  // Media Session API enrichie pour forcer la main au système mobile
   useEffect(() => {
-    if ('mediaSession' in navigator && currentTrack) {
+    if (!('mediaSession' in navigator)) return;
+
+    if (currentTrack) {
       navigator.mediaSession.metadata = new MediaMetadata({
         title: currentTrack.title,
         artist: currentTrack.artist,
+        album: 'MusicX',
         artwork: [{ src: currentTrack.cover, sizes: '512x512', type: 'image/jpeg' }]
       });
-
-      navigator.mediaSession.setActionHandler('play', () => {
-        if (audioRef.current) {
-          audioRef.current.play();
-          setIsPlaying(true);
-        }
-      });
-
-      navigator.mediaSession.setActionHandler('pause', () => {
-        if (audioRef.current) {
-          audioRef.current.pause();
-          setIsPlaying(false);
-        }
-      });
-
-      navigator.mediaSession.setActionHandler('previoustrack', () => {
-        handlePrev();
-      });
-
-      navigator.mediaSession.setActionHandler('nexttrack', () => {
-        handleNext();
-      });
     }
+
+    navigator.mediaSession.setActionHandler('play', () => {
+      if (audioRef.current) {
+        audioRef.current.play().catch(e => console.log(e));
+        setIsPlaying(true);
+      }
+    });
+
+    navigator.mediaSession.setActionHandler('pause', () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+      }
+      setIsPlaying(false);
+    });
+
+    navigator.mediaSession.setActionHandler('previoustrack', () => {
+      handlePrev();
+    });
+
+    navigator.mediaSession.setActionHandler('nexttrack', () => {
+      handleNext();
+    });
+
+    return () => {
+      navigator.mediaSession.setActionHandler('play', null);
+      navigator.mediaSession.setActionHandler('pause', null);
+      navigator.mediaSession.setActionHandler('previoustrack', null);
+      navigator.mediaSession.setActionHandler('nexttrack', null);
+    };
   }, [currentTrack]);
 
   const handleCardClick = (index: number) => {
@@ -236,7 +246,7 @@ export default function App() {
     }
   };
 
-  // Gestion de la fin d'un morceau via l'écouteur natif
+  // Gestion ultra-robuste de la fin de piste pour forcer l'enchaînement en arrière-plan
   useEffect(() => {
     const audioElement = audioRef.current;
     if (!audioElement) return;
@@ -250,9 +260,10 @@ export default function App() {
       }
     };
 
-    audioElement.addEventListener('ended', handleAudioEnded);
+    audioElement.onended = handleAudioEnded;
+
     return () => {
-      audioElement.removeEventListener('ended', handleAudioEnded);
+      audioElement.onended = null;
     };
   }, []);
 
