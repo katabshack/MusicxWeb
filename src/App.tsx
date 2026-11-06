@@ -156,7 +156,7 @@ export default function App() {
   };
 
   const toggleFavorite = (track: Track, e: React.MouseEvent) => {
-    e.stopPropagation();
+    e.stopPropagation(); // Empêche le clic de lancer la musique
     setFavorites(prev => {
       const exists = prev.some(t => t.id === track.id);
       if (exists) {
@@ -189,15 +189,36 @@ export default function App() {
         }}
       />
 
-      {/* Header */}
+      {/* Header responsive */}
       <header className="mx-header">
-        <div className="mx-brand">
-          <div className="mx-logo-icon">
-            <Music size={20} color="#ffffff" />
+        <div className="mx-brand-row">
+          <div className="mx-brand">
+            <div className="mx-logo-icon">
+              <Music size={18} color="#ffffff" />
+            </div>
+            <span className="mx-title">MusicX</span>
           </div>
-          <span className="mx-title">MusicX</span>
+
+          {/* Onglets visibles directement sur mobile et desktop */}
+          <div className="mx-tabs" style={{ width: 'auto' }}>
+            <button
+              onClick={() => setActiveTab('home')}
+              className={`mx-tab-btn ${activeTab === 'home' ? 'active' : ''}`}
+            >
+              <Home size={15} />
+              <span>Accueil</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('library')}
+              className={`mx-tab-btn ${activeTab === 'library' ? 'active' : ''}`}
+            >
+              <Library size={15} />
+              <span>Biblio ({favorites.length})</span>
+            </button>
+          </div>
         </div>
 
+        {/* Barre de recherche plein format */}
         <div className="mx-search-box">
           <Search className="mx-search-icon" />
           <input
@@ -208,23 +229,6 @@ export default function App() {
             className="mx-search-input"
           />
           {loading && <Loader2 className="mx-loader-search" />}
-        </div>
-
-        <div className="mx-tabs">
-          <button
-            onClick={() => setActiveTab('home')}
-            className={`mx-tab-btn ${activeTab === 'home' ? 'active' : ''}`}
-          >
-            <Home size={16} />
-            <span>Accueil</span>
-          </button>
-          <button
-            onClick={() => setActiveTab('library')}
-            className={`mx-tab-btn ${activeTab === 'library' ? 'active' : ''}`}
-          >
-            <Library size={16} />
-            <span>Biblio ({favorites.length})</span>
-          </button>
         </div>
       </header>
 
@@ -239,10 +243,10 @@ export default function App() {
             {searchResults.length === 0 ? (
               <div className="mx-empty-state">
                 <div className="mx-empty-icon">
-                  <Sparkles size={32} />
+                  <Sparkles size={28} />
                 </div>
-                <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '8px' }}>Bienvenue sur MusicX</h3>
-                <p style={{ color: '#71717a', fontSize: '0.875rem', maxWidth: '320px' }}>
+                <h3 style={{ fontSize: '1.1rem', fontWeight: 'bold', marginBottom: '6px' }}>Bienvenue sur MusicX</h3>
+                <p style={{ color: '#71717a', fontSize: '0.85rem', maxWidth: '300px' }}>
                   Recherche un artiste pour lancer la liste de lecture en continu.
                 </p>
               </div>
@@ -263,12 +267,13 @@ export default function App() {
                         <button
                           onClick={(e) => toggleFavorite(track, e)}
                           className={`mx-fav-btn ${isFav ? 'active' : ''}`}
+                          title="Favoris"
                         >
                           <Heart size={16} fill={isFav ? '#ffffff' : 'none'} />
                         </button>
                         <div className="mx-play-overlay">
                           <div className="mx-play-btn-circle">
-                            {isCurrent && isPlaying ? <Pause size={18} fill="#ffffff" /> : <Play size={18} fill="#ffffff" style={{ marginLeft: '2px' }} />}
+                            {isCurrent && isPlaying ? <Pause size={16} fill="#ffffff" /> : <Play size={16} fill="#ffffff" style={{ marginLeft: '2px' }} />}
                           </div>
                         </div>
                       </div>
@@ -282,14 +287,14 @@ export default function App() {
           </div>
         ) : (
           <div>
-            <h2 className="mx-section-title">Ma Bibliothèque</h2>
+            <h2 className="mx-section-title">Ma Bibliothèque ({favorites.length})</h2>
             {favorites.length === 0 ? (
               <div className="mx-empty-state">
                 <div className="mx-empty-icon">
-                  <Heart size={32} />
+                  <Heart size={28} />
                 </div>
-                <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '8px' }}>Aucun favori pour l'instant</h3>
-                <p style={{ color: '#71717a', fontSize: '0.875rem', maxWidth: '320px' }}>
+                <h3 style={{ fontSize: '1.1rem', fontWeight: 'bold', marginBottom: '6px' }}>Aucun favori pour l'instant</h3>
+                <p style={{ color: '#71717a', fontSize: '0.85rem', maxWidth: '300px' }}>
                   Ajoute des musiques à tes favoris en cliquant sur le cœur lors de tes recherches.
                 </p>
               </div>
@@ -309,12 +314,13 @@ export default function App() {
                         <button
                           onClick={(e) => toggleFavorite(track, e)}
                           className="mx-fav-btn active"
+                          title="Retirer des favoris"
                         >
                           <Heart size={16} fill="#ffffff" />
                         </button>
                         <div className="mx-play-overlay">
                           <div className="mx-play-btn-circle">
-                            {isCurrent && isPlaying ? <Pause size={18} fill="#ffffff" /> : <Play size={18} fill="#ffffff" style={{ marginLeft: '2px' }} />}
+                            {isCurrent && isPlaying ? <Pause size={16} fill="#ffffff" /> : <Play size={16} fill="#ffffff" style={{ marginLeft: '2px' }} />}
                           </div>
                         </div>
                       </div>
@@ -329,26 +335,24 @@ export default function App() {
         )}
       </main>
 
-      {/* Footer / Lecteur */}
+      {/* Footer / Lecteur fixe et visible sur mobile */}
       {currentTrack && (
         <footer className="mx-footer">
-          <div className="mx-player-left">
-            <div className="mx-player-cover">
-              <img src={currentTrack.cover} alt={currentTrack.title} />
+          <div className="mx-player-top-mobile">
+            <div className="mx-player-left">
+              <div className="mx-player-cover">
+                <img src={currentTrack.cover} alt={currentTrack.title} />
+              </div>
+              <div className="mx-player-meta">
+                <h4 className="mx-player-title">{currentTrack.title}</h4>
+                <p className="mx-player-artist">{currentTrack.artist}</p>
+              </div>
             </div>
-            <div className="mx-player-meta">
-              <h4 className="mx-player-title">{currentTrack.title}</h4>
-              <p className="mx-player-artist">{currentTrack.artist}</p>
-            </div>
-          </div>
 
-          <div className="mx-player-center">
-            <div className="mx-player-controls">
-              <button onClick={() => setIsShuffle(!isShuffle)} className={`mx-ctrl-btn ${isShuffle ? 'active' : ''}`}>
-                <Shuffle size={16} />
-              </button>
+            {/* Contrôles intégrés sur la même ligne sur mobile pour un gain d'espace */}
+            <div className="mx-player-controls" style={{ gap: '10px' }}>
               <button onClick={handlePrev} className="mx-ctrl-btn">
-                <SkipBack size={20} fill="currentColor" />
+                <SkipBack size={18} fill="currentColor" />
               </button>
               <button
                 onClick={togglePlayPause}
@@ -356,21 +360,20 @@ export default function App() {
                 className="mx-play-main-btn"
               >
                 {isLoadingTrack ? (
-                  <Loader2 size={18} className="animate-spin" style={{ color: '#000' }} />
+                  <Loader2 size={16} className="animate-spin" style={{ color: '#000' }} />
                 ) : isPlaying ? (
-                  <Pause size={18} fill="currentColor" />
+                  <Pause size={16} fill="currentColor" />
                 ) : (
-                  <Play size={18} fill="currentColor" style={{ marginLeft: '2px' }} />
+                  <Play size={16} fill="currentColor" style={{ marginLeft: '2px' }} />
                 )}
               </button>
               <button onClick={handleNext} className="mx-ctrl-btn">
-                <SkipForward size={20} fill="currentColor" />
-              </button>
-              <button onClick={() => setIsRepeat(!isRepeat)} className={`mx-ctrl-btn ${isRepeat ? 'active' : ''}`}>
-                <Repeat size={16} />
+                <SkipForward size={18} fill="currentColor" />
               </button>
             </div>
+          </div>
 
+          <div className="mx-player-center" style={{ width: '100%' }}>
             <div className="mx-progress-container">
               <span>{formatTime(currentTime)}</span>
               <input
@@ -398,7 +401,7 @@ export default function App() {
               }}
               className="mx-ctrl-btn"
             >
-              {isMuted || volume === 0 ? <VolumeX size={20} /> : <Volume2 size={20} />}
+              {isMuted || volume === 0 ? <VolumeX size={18} /> : <Volume2 size={18} />}
             </button>
             <input
               type="range"
@@ -413,7 +416,7 @@ export default function App() {
                 if (audioRef.current) audioRef.current.volume = val;
               }}
               className="mx-range-input"
-              style={{ width: '96px' }}
+              style={{ width: '80px' }}
             />
           </div>
         </footer>
