@@ -1,9 +1,6 @@
 const express = require('express');
 const cors = require('cors');
-const yts = require('yt-search');
-const { exec } = require('child_process');
-const fs = require('fs');
-const path = require('path');
+const axios = require('axios');
 
 const app = express();
 
@@ -15,64 +12,62 @@ app.use(cors({
 
 app.use(express.json());
 
-const downloadsDir = path.join(__dirname, 'downloads');
-if (!fs.existsSync(downloadsDir)) {
-  fs.mkdirSync(downloadsDir, { recursive: true });
-}
-
-// Route de recherche
+// Route de recherche via l'API Piped (contourne les blocages IP sur Render)
 app.get('/api/search', async (req, res) => {
   try {
     const query = req.query.q;
+    console.log(`[API SEARCH] Recherche pour : "${query}"`);
+    
     if (!query) return res.status(400).json({ error: 'Paramètre de recherche manquant' });
 
-    const r = await yts(query);
-    const videos = r.videos.slice(0, 15).map(v => ({
-      id: v.videoId,
-      title: v.title,
-      artist: v.author.name,
-      cover: v.thumbnail
-    }));
+    const response = await axios.get(`https://pipedapi.kavin.rocks/search?q=${encodeURIComponent(query)}&filter=videos`, {
+      headers: { 'User-Agent': 'Mozilla/5.0' },
+      timeout: 10000
+    });
+
+    const items = response.data.items || [];
+    const videos = items.slice(0, 15).map(v => {
+      const videoId = v.url ? v.url.replace('/watch?v=', '') : '';
+      return {
+        id: videoId,
+        title: v.title,
+        artist: v.uploaderName,
+        cover: v.thumbnail
+      };
+    }).filter(v => v.id);
 
     res.json(videos);
   } catch (err) {
-    console.error("Erreur de recherche:", err);
+    console.error("[API SEARCH] Erreur:", err.message);
     res.status(500).json({ error: 'Erreur lors de la recherche' });
   }
 });
 
-// Route de streaming via yt-dlp (gère le flux direct sans crash)
+// Route de streaming via l'API Piped
 app.get('/api/stream', async (req, res) => {
   const videoId = req.query.id;
   if (!videoId) return res.status(400).json({ error: 'ID de vidéo manquant' });
 
-  const videoURL = `https://www.youtube.com/watch?v=${videoId}`;
-
   try {
-    console.log(`[STREAM] Récupération du lien direct pour : ${videoId}`);
+    console.log(`[API STREAM] Récupération du flux pour la vidéo : ${videoId}`);
 
-    // On demande à yt-dlp de nous extraire l'URL audio directe en streaming
-    exec(`npx yt-dlp -g -f "bestaudio" "${videoURL}"`, (error, stdout, stderr) => {
-      if (error || !stdout) {
-        console.error("Erreur yt-dlp:", stderr);
-        if (!res.headersSent) {
-          return res.status(500).json({ error: 'Impossible de récupérer ce morceau' });
-        }
-        return;
-      }
-
-      const streamUrl = stdout.trim().split('\n')[0];
-      if (streamUrl) {
-        return res.redirect(streamUrl);
-      } else {
-        res.status(500).json({ error: 'Lien de flux introuvable' });
-      }
+    const response = await axios.get(`https://pipedapi.kavin.rocks/streams/${videoId}`, {
+      headers: { 'User-Agent': 'Mozilla/5.0' },
+      timeout: 10000
     });
 
+    const audioStreams = response.data.audioStreams;
+    if (audioStreams && audioStreams.length > 0) {
+      const bestAudio = audioStreams.reduce((prev, curr) => (curr.bitrate > prev.bitrate) ? curr : prev);
+      return res.redirect(bestAudio.url);
+    } else {
+      res.status(404).json({ error: 'Aucun flux audio disponible' });
+    }
+
   } catch (err) {
-    console.error("Erreur serveur:", err);
+    console.error("[API STREAM] Erreur:", err.message);
     if (!res.headersSent) {
-      res.status(500).json({ error: 'Erreur interne du serveur' });
+      res.status(500).json({ error: 'Impossible de lire ce morceau' });
     }
   }
 });
