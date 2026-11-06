@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Search, Play, Pause, Music, Sparkles, Loader2, SkipBack, SkipForward, Home, Library, Heart, Volume2, VolumeX } from 'lucide-react';
+import { Search, Play, Pause, Music, Sparkles, Loader2, SkipBack, SkipForward, Home, Library, Heart, Shuffle, Repeat, Volume2, VolumeX } from 'lucide-react';
 import axios from 'axios';
 
 interface Track {
@@ -43,6 +43,8 @@ export default function App() {
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(1);
   const [isMuted, setIsMuted] = useState(false);
+  const [isShuffle, setIsShuffle] = useState(false);
+  const [isRepeat, setIsRepeat] = useState(false);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -136,7 +138,10 @@ export default function App() {
 
   const handleNext = () => {
     if (currentPlaylist.length === 0) return;
-    if (currentTrackIndex !== null) {
+    if (isShuffle) {
+      const randomIndex = Math.floor(Math.random() * currentPlaylist.length);
+      setCurrentTrackIndex(randomIndex);
+    } else if (currentTrackIndex !== null) {
       const nextIndex = (currentTrackIndex + 1) % currentPlaylist.length;
       setCurrentTrackIndex(nextIndex);
     }
@@ -151,7 +156,7 @@ export default function App() {
   };
 
   const toggleFavorite = (track: Track, e: React.MouseEvent) => {
-    e.stopPropagation();
+    e.stopPropagation(); // Empêche le clic de lancer la musique
     setFavorites(prev => {
       const exists = prev.some(t => t.id === track.id);
       if (exists) {
@@ -174,7 +179,14 @@ export default function App() {
         ref={audioRef}
         onTimeUpdate={() => audioRef.current && setCurrentTime(audioRef.current.currentTime)}
         onLoadedMetadata={() => audioRef.current && setDuration(audioRef.current.duration)}
-        onEnded={() => handleNext()}
+        onEnded={() => {
+          if (isRepeat && audioRef.current) {
+            audioRef.current.currentTime = 0;
+            audioRef.current.play();
+          } else {
+            handleNext();
+          }
+        }}
       />
 
       <header className="mx-header">
@@ -321,19 +333,26 @@ export default function App() {
 
       {currentTrack && (
         <footer className="mx-footer">
-          <div className="mx-player-top-mobile">
-            <div className="mx-player-left">
-              <div className="mx-player-cover">
-                <img src={currentTrack.cover} alt={currentTrack.title} />
-              </div>
-              <div className="mx-player-meta">
-                <h4 className="mx-player-title">{currentTrack.title}</h4>
-                <p className="mx-player-artist">{currentTrack.artist}</p>
-              </div>
+          <div className="mx-player-left">
+            <div className="mx-player-cover">
+              <img src={currentTrack.cover} alt={currentTrack.title} />
             </div>
+            <div className="mx-player-meta">
+              <h4 className="mx-player-title">{currentTrack.title}</h4>
+              <p className="mx-player-artist">{currentTrack.artist}</p>
+            </div>
+          </div>
 
-            <div className="mx-player-controls" style={{ gap: '10px' }}>
-              <button onClick={handlePrev} className="mx-ctrl-btn">
+          <div className="mx-player-center">
+            <div className="mx-player-controls">
+              <button 
+                onClick={() => setIsShuffle(!isShuffle)} 
+                className={`mx-ctrl-btn ${isShuffle ? 'active' : ''}`}
+                title="Lecture aléatoire"
+              >
+                <Shuffle size={16} />
+              </button>
+              <button onClick={handlePrev} className="mx-ctrl-btn" title="Précédent">
                 <SkipBack size={18} fill="currentColor" />
               </button>
               <button
@@ -349,13 +368,18 @@ export default function App() {
                   <Play size={16} fill="currentColor" style={{ marginLeft: '2px' }} />
                 )}
               </button>
-              <button onClick={handleNext} className="mx-ctrl-btn">
+              <button onClick={handleNext} className="mx-ctrl-btn" title="Suivant">
                 <SkipForward size={18} fill="currentColor" />
               </button>
+              <button 
+                onClick={() => setIsRepeat(!isRepeat)} 
+                className={`mx-ctrl-btn ${isRepeat ? 'active' : ''}`}
+                title="Répéter"
+              >
+                <Repeat size={16} />
+              </button>
             </div>
-          </div>
 
-          <div className="mx-player-center" style={{ width: '100%' }}>
             <div className="mx-progress-container">
               <span>{formatTime(currentTime)}</span>
               <input
@@ -375,31 +399,33 @@ export default function App() {
           </div>
 
           <div className="mx-player-right">
-            <button 
-              onClick={() => {
-                const newMuted = !isMuted;
-                setIsMuted(newMuted);
-                if (audioRef.current) audioRef.current.muted = newMuted;
-              }}
-              className="mx-ctrl-btn"
-            >
-              {isMuted || volume === 0 ? <VolumeX size={18} /> : <Volume2 size={18} />}
-            </button>
-            <input
-              type="range"
-              min={0}
-              max={1}
-              step={0.01}
-              value={isMuted ? 0 : volume}
-              onChange={(e) => {
-                const val = Number(e.target.value);
-                setVolume(val);
-                setIsMuted(val === 0);
-                if (audioRef.current) audioRef.current.volume = val;
-              }}
-              className="mx-range-input"
-              style={{ width: '80px' }}
-            />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', justifyContent: 'flex-end' }}>
+              <button 
+                onClick={() => {
+                  const newMuted = !isMuted;
+                  setIsMuted(newMuted);
+                  if (audioRef.current) audioRef.current.muted = newMuted;
+                }}
+                className="mx-ctrl-btn"
+              >
+                {isMuted || volume === 0 ? <VolumeX size={18} /> : <Volume2 size={18} />}
+              </button>
+              <input
+                type="range"
+                min={0}
+                max={1}
+                step={0.01}
+                value={isMuted ? 0 : volume}
+                onChange={(e) => {
+                  const val = Number(e.target.value);
+                  setVolume(val);
+                  setIsMuted(val === 0);
+                  if (audioRef.current) audioRef.current.volume = val;
+                }}
+                className="mx-range-input"
+                style={{ width: '90px' }}
+              />
+            </div>
           </div>
         </footer>
       )}
