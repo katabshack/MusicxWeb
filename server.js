@@ -1,13 +1,10 @@
 const express = require('express');
 const cors = require('cors');
 const yts = require('yt-search');
-const { Ytdl, Quality } = require('@distube/ytdl-core');
-const fs = require('fs');
-const path = require('path');
+const axios = require('axios');
 
 const app = express();
 
-// Configuration CORS ouverte pour autoriser toutes les origines (Mobile et PC)
 app.use(cors({
   origin: '*',
   methods: ['GET', 'POST', 'OPTIONS'],
@@ -16,32 +13,11 @@ app.use(cors({
 
 app.use(express.json());
 
-const yt = new Ytdl();
-
-const downloadsDir = path.join(__dirname, 'downloads');
-if (!fs.existsSync(downloadsDir)) {
-  fs.mkdirSync(downloadsDir, { recursive: true });
-}
-
-// Fonction de nettoyage des anciens fichiers
-const cleanOldDownloads = (currentVideoId) => {
-  try {
-    const files = fs.readdirSync(downloadsDir);
-    for (const file of files) {
-      if (!file.includes(currentVideoId)) {
-        fs.unlinkSync(path.join(downloadsDir, file));
-      }
-    }
-  } catch (err) {
-    console.error("Erreur lors du nettoyage:", err);
-  }
-};
-
-// Route de recherche avec logs détaillés
+// Route de recherche stable
 app.get('/api/search', async (req, res) => {
   try {
     const query = req.query.q;
-    console.log(`[API SEARCH] Requête reçue pour : "${query}"`);
+    console.log(`[API SEARCH] Recherche pour : "${query}"`);
     
     if (!query) return res.status(400).json({ error: 'Paramètre de recherche manquant' });
 
@@ -53,83 +29,40 @@ app.get('/api/search', async (req, res) => {
       cover: v.thumbnail
     }));
 
-    console.log(`[API SEARCH] ${videos.videos?.length || videos.length} résultats trouvés.`);
     res.json(videos);
   } catch (err) {
-    console.error("[API SEARCH] Erreur serveur:", err);
+    console.error("[API SEARCH] Erreur:", err.message);
     res.status(500).json({ error: 'Erreur lors de la recherche' });
   }
 });
 
-// Route de streaming avec headers CORS explicites
+// Route de streaming directe via passerelle cloud (zéro crash, zéro worker)
 app.get('/api/stream', async (req, res) => {
   const videoId = req.query.id;
   if (!videoId) return res.status(400).json({ error: 'ID de vidéo manquant' });
 
-  const filePath = path.join(downloadsDir, `${videoId}.mp3`);
-  const videoURL = `https://www.youtube.com/watch?v=${videoId}`;
-
-  // Augmenter le timeout pour laisser le temps à Render de télécharger en cas de réveil
-  req.setTimeout(120000);
-
   try {
-    if (!fs.existsSync(filePath) || fs.statSync(filePath).size < 1000) {
-      cleanOldDownloads(videoId);
-      console.log(`[API STREAM] Téléchargement initial pour la vidéo : ${videoId}`);
-      
-      const info = await yt.getInfo(videoURL);
-      const audioStream = await yt.download(info, { 
-        quality: Quality.HighestAudio, 
-        filter: { hasAudio: true, hasVideo: false } 
-      });
+    console.log(`[API STREAM] Redirection du flux pour la vidéo : ${videoId}`);
 
-      const fileStream = fs.createWriteStream(filePath);
-      audioStream.pipe(fileStream);
+    // Utilisation d'une passerelle audio publique stable pour obtenir le lien direct
+    const response = await axios.get(`https://piped.video/api/v1/streams/${videoId}`, {
+      headers: { 'User-Agent': 'Mozilla/5.0' }
+    });
 
-      await new Promise((resolve, reject) => {
-        fileStream.on('finish', resolve);
-        fileStream.on('error', reject);
-        audioStream.on('error', reject);
-      });
-      console.log(`[API STREAM] Téléchargement terminé : ${videoId}.mp3`);
-    }
-
-    const stat = fs.statSync(filePath);
-    const fileSize = stat.size;
-    const range = req.headers.range;
-
-    if (range) {
-      const parts = range.replace(/bytes=/, "").split("-");
-      const start = parseInt(parts[0], 10);
-      const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
-      const chunksize = (end - start) + 1;
-      const file = fs.createReadStream(filePath, { start, end });
-      
-      res.writeHead(206, {
-        'Content-Range': `bytes ${start}-${end}/${fileSize}`,
-        'Accept-Ranges': 'bytes',
-        'Content-Length': chunksize,
-        'Content-Type': 'audio/mpeg',
-        'Access-Control-Allow-Origin': '*'
-      });
-      file.pipe(res);
+    // On récupère le flux audio le plus qualitatif
+    const audioStreams = response.data.audioStreams;
+    if (audioStreams && audioStreams.length > 0) {
+      // Tri pour prendre le meilleur débit audio
+      const bestAudio = audioStreams.reduce((prev, curr) => (curr.bitrate > prev.bitrate) ? curr : prev);
+      return res.redirect(bestAudio.url);
     } else {
-      res.writeHead(200, {
-        'Content-Length': fileSize,
-        'Content-Type': 'audio/mpeg',
-        'Accept-Ranges': 'bytes',
-        'Access-Control-Allow-Origin': '*'
-      });
-      fs.createReadStream(filePath).pipe(res);
+      res.status(404).json({ error: 'Aucun flux audio disponible' });
     }
 
   } catch (err) {
-    console.error("[API STREAM] Erreur globale:", err);
-    if (fs.existsSync(filePath)) {
-      try { fs.unlinkSync(filePath); } catch(e) {}
-    }
+    console.error("[API STREAM] Erreur:", err.message);
     if (!res.headersSent) {
-      res.status(500).json({ error: 'Impossible de traiter ce morceau' });
+      res.status(500).json({ error: 'Impossible de lire ce morceau' });
     }
   }
 });
