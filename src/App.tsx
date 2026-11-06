@@ -49,6 +49,12 @@ export default function App() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Utilisation de Refs pour garder les valeurs fraîches à l'intérieur des gestionnaires d'événements audio en arrière-plan (écran éteint)
+  const currentPlaylistRef = useRef<Track[]>([]);
+  const currentTrackIndexRef = useRef<number | null>(null);
+  const isRepeatRef = useRef(isRepeat);
+  const isShuffleRef = useRef(isShuffle);
+
   useEffect(() => {
     try {
       localStorage.setItem('musicx_favorites', JSON.stringify(favorites));
@@ -65,6 +71,23 @@ export default function App() {
   const currentTrack = currentTrackIndex !== null && currentPlaylist[currentTrackIndex] 
     ? currentPlaylist[currentTrackIndex] 
     : null;
+
+  // Mise à jour synchrone des refs pour les écouteurs d'événements natifs
+  useEffect(() => {
+    currentPlaylistRef.current = currentPlaylist;
+  }, [currentPlaylist]);
+
+  useEffect(() => {
+    currentTrackIndexRef.current = currentTrackIndex;
+  }, [currentTrackIndex]);
+
+  useEffect(() => {
+    isRepeatRef.current = isRepeat;
+  }, [isRepeat]);
+
+  useEffect(() => {
+    isShuffleRef.current = isShuffle;
+  }, [isShuffle]);
 
   // Gestion de la recherche YouTube (uniquement sur l'accueil)
   useEffect(() => {
@@ -160,12 +183,16 @@ export default function App() {
   };
 
   const handleNext = () => {
-    if (currentPlaylist.length === 0) return;
-    if (isShuffle) {
-      const randomIndex = Math.floor(Math.random() * currentPlaylist.length);
+    const playlist = currentPlaylistRef.current;
+    const currentIndex = currentTrackIndexRef.current;
+    
+    if (playlist.length === 0) return;
+    
+    if (isShuffleRef.current) {
+      const randomIndex = Math.floor(Math.random() * playlist.length);
       setCurrentTrackIndex(randomIndex);
-    } else if (currentTrackIndex !== null) {
-      const nextIndex = (currentTrackIndex + 1) % currentPlaylist.length;
+    } else if (currentIndex !== null) {
+      const nextIndex = (currentIndex + 1) % playlist.length;
       setCurrentTrackIndex(nextIndex);
     }
   };
@@ -177,6 +204,26 @@ export default function App() {
       setCurrentTrackIndex(prevIndex);
     }
   };
+
+  // Enregistrement de l'écouteur natif "ended" sur l'élément audio pour garantir l'enchaînement même écran éteint
+  useEffect(() => {
+    const audioElement = audioRef.current;
+    if (!audioElement) return;
+
+    const handleAudioEnded = () => {
+      if (isRepeatRef.current) {
+        audioElement.currentTime = 0;
+        audioElement.play().catch(e => console.error(e));
+      } else {
+        handleNext();
+      }
+    };
+
+    audioElement.addEventListener('ended', handleAudioEnded);
+    return () => {
+      audioElement.removeEventListener('ended', handleAudioEnded);
+    };
+  }, []);
 
   const toggleFavorite = (track: Track, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -202,14 +249,6 @@ export default function App() {
         ref={audioRef}
         onTimeUpdate={() => audioRef.current && setCurrentTime(audioRef.current.currentTime)}
         onLoadedMetadata={() => audioRef.current && setDuration(audioRef.current.duration)}
-        onEnded={() => {
-          if (isRepeat && audioRef.current) {
-            audioRef.current.currentTime = 0;
-            audioRef.current.play();
-          } else {
-            handleNext();
-          }
-        }}
       />
 
       <header className="mx-header">
