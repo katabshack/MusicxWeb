@@ -97,20 +97,37 @@ export default function App() {
     setIsLoadingTrack(true);
   };
 
-  // Changement de source audio vers le serveur local / ngrok
+  // Changement de source audio vers le serveur local / ngrok via Blob Fetch
   useEffect(() => {
     if (currentTrack && audioRef.current) {
-      audioRef.current.src = `${SERVER_URL}/api/stream?id=${currentTrack.id}`;
-      audioRef.current.load();
-      audioRef.current.play()
-        .then(() => {
-          setIsPlaying(true);
-          setIsLoadingTrack(false);
-        })
-        .catch(e => {
-          console.error("Erreur de lecture audio:", e);
-          setIsLoadingTrack(false);
-        });
+      const streamUrl = `${SERVER_URL}/api/stream?id=${currentTrack.id}`;
+      
+      fetch(streamUrl, {
+        headers: {
+          'ngrok-skip-browser-warning': 'true'
+        }
+      })
+      .then(res => res.blob())
+      .then(blob => {
+        const objectUrl = URL.createObjectURL(blob);
+        if (audioRef.current) {
+          audioRef.current.src = objectUrl;
+          audioRef.current.load();
+          audioRef.current.play()
+            .then(() => {
+              setIsPlaying(true);
+              setIsLoadingTrack(false);
+            })
+            .catch(e => {
+              console.error("Erreur de lecture audio:", e);
+              setIsLoadingTrack(false);
+            });
+        }
+      })
+      .catch(err => {
+        console.error("Erreur lors du fetch du flux audio:", err);
+        setIsLoadingTrack(false);
+      });
     }
   }, [currentTrackIndex, activeTab]);
 
@@ -164,7 +181,7 @@ export default function App() {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-[#0a0a0c] text-white font-sans select-none overflow-hidden">
+    <div className="flex flex-col h-screen bg-[#121212] text-white font-sans select-none overflow-hidden">
       {/* Élément Audio Caché */}
       <audio
         ref={audioRef}
@@ -181,7 +198,7 @@ export default function App() {
       />
 
       {/* Barre de Navigation Supérieure */}
-      <header className="flex items-center justify-between px-6 py-4 bg-[#121216] border-b border-white/5 z-10">
+      <header className="flex items-center justify-between px-6 py-4 bg-[#18181b] border-b border-white/5 z-10">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-red-600 to-rose-500 flex items-center justify-center shadow-lg shadow-red-600/20">
             <Music className="w-5 h-5 text-white" />
@@ -362,7 +379,7 @@ export default function App() {
 
       {/* Barre de Lecture Inférieure (Player) */}
       {currentTrack && (
-        <footer className="h-24 bg-[#121216] border-t border-white/5 px-6 flex items-center justify-between gap-4 z-20">
+        <footer className="h-24 bg-[#18181b] border-t border-white/5 px-6 flex items-center justify-between gap-4 z-20">
           {/* Info Piste */}
           <div className="flex items-center gap-3 w-1/4 min-w-[200px]">
             <div className="relative w-14 h-14 rounded-xl overflow-hidden bg-zinc-800 flex-shrink-0">

@@ -7,11 +7,11 @@ const path = require('path');
 
 const app = express();
 
-// Configuration CORS permissive pour autoriser ton site Render et les requêtes locales
+// Configuration CORS avec l'en-tête ngrok-skip-browser-warning autorisé
 app.use(cors({
   origin: '*',
   methods: ['GET', 'POST', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Range', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Range', 'Authorization', 'ngrok-skip-browser-warning']
 }));
 
 app.use(express.json());
