@@ -55,12 +55,21 @@ export default function App() {
     } catch (e) {}
   }, [favorites]);
 
-  const currentPlaylist = activeTab === 'home' ? searchResults : favorites;
+  // Si on est en mode bibliothèque, on filtre les favoris selon la recherche locale. Sinon, on prend les résultats YouTube.
+  const filteredLibrary = favorites.filter(track => 
+    track.title.toLowerCase().includes(query.toLowerCase()) || 
+    track.artist.toLowerCase().includes(query.toLowerCase())
+  );
+
+  const currentPlaylist = activeTab === 'home' ? searchResults : filteredLibrary;
   const currentTrack = currentTrackIndex !== null && currentPlaylist[currentTrackIndex] 
     ? currentPlaylist[currentTrackIndex] 
     : null;
 
+  // Gestion de la recherche YouTube (uniquement sur l'accueil)
   useEffect(() => {
+    if (activeTab !== 'home') return;
+
     if (!query.trim()) {
       setSearchResults([]);
       return;
@@ -83,9 +92,23 @@ export default function App() {
     return () => {
       if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
     };
-  }, [query]);
+  }, [query, activeTab]);
 
-  const handlePlayTrack = (index: number) => {
+  // Changement d'onglet : on vide la recherche pour repartir sur une base propre
+  const handleTabChange = (tab: 'home' | 'library') => {
+    setActiveTab(tab);
+    setQuery('');
+    setCurrentTrackIndex(null);
+  };
+
+  const handleCardClick = (index: number) => {
+    const clickedTrack = currentPlaylist[index];
+    
+    if (currentTrack?.id === clickedTrack?.id) {
+      togglePlayPause();
+      return;
+    }
+
     setCurrentTrackIndex(index);
     setIsPlaying(true);
     setIsLoadingTrack(true);
@@ -122,7 +145,7 @@ export default function App() {
         setIsLoadingTrack(false);
       });
     }
-  }, [currentTrackIndex, activeTab]);
+  }, [currentTrackIndex]);
 
   const togglePlayPause = () => {
     if (!audioRef.current || !currentTrack) return;
@@ -156,7 +179,7 @@ export default function App() {
   };
 
   const toggleFavorite = (track: Track, e: React.MouseEvent) => {
-    e.stopPropagation(); // Empêche le clic de lancer la musique
+    e.stopPropagation();
     setFavorites(prev => {
       const exists = prev.some(t => t.id === track.id);
       if (exists) {
@@ -200,14 +223,14 @@ export default function App() {
 
           <div className="mx-tabs" style={{ width: 'auto' }}>
             <button
-              onClick={() => setActiveTab('home')}
+              onClick={() => handleTabChange('home')}
               className={`mx-tab-btn ${activeTab === 'home' ? 'active' : ''}`}
             >
               <Home size={15} />
               <span>Accueil</span>
             </button>
             <button
-              onClick={() => setActiveTab('library')}
+              onClick={() => handleTabChange('library')}
               className={`mx-tab-btn ${activeTab === 'library' ? 'active' : ''}`}
             >
               <Library size={15} />
@@ -216,16 +239,17 @@ export default function App() {
           </div>
         </div>
 
+        {/* La barre de recherche reste toujours active, adaptée selon l'onglet */}
         <div className="mx-search-box">
           <Search className="mx-search-icon" />
           <input
             type="text"
-            placeholder="Rechercher un artiste, un titre..."
+            placeholder={activeTab === 'home' ? "Rechercher un artiste, un titre..." : "Filtrer dans la bibliothèque..."}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             className="mx-search-input"
           />
-          {loading && <Loader2 className="mx-loader-search" />}
+          {activeTab === 'home' && loading && <Loader2 className="mx-loader-search" />}
         </div>
       </header>
 
@@ -255,7 +279,7 @@ export default function App() {
                   return (
                     <div
                       key={track.id}
-                      onClick={() => handlePlayTrack(index)}
+                      onClick={() => handleCardClick(index)}
                       className={`mx-card ${isCurrent ? 'active' : ''}`}
                     >
                       <div className="mx-card-img-wrapper">
@@ -283,26 +307,33 @@ export default function App() {
           </div>
         ) : (
           <div>
-            <h2 className="mx-section-title">Ma Bibliothèque ({favorites.length})</h2>
-            {favorites.length === 0 ? (
+            <h2 className="mx-section-title">
+              {query ? `Résultats du filtre (${filteredLibrary.length})` : `Ma Bibliothèque (${favorites.length})`}
+            </h2>
+            
+            {filteredLibrary.length === 0 ? (
               <div className="mx-empty-state">
                 <div className="mx-empty-icon">
                   <Heart size={28} />
                 </div>
-                <h3 style={{ fontSize: '1.1rem', fontWeight: 'bold', marginBottom: '6px' }}>Aucun favori pour l'instant</h3>
+                <h3 style={{ fontSize: '1.1rem', fontWeight: 'bold', marginBottom: '6px' }}>
+                  {favorites.length === 0 ? "Aucun favori pour l'instant" : "Aucun résultat trouvé"}
+                </h3>
                 <p style={{ color: '#71717a', fontSize: '0.85rem', maxWidth: '300px' }}>
-                  Ajoute des musiques à tes favoris en cliquant sur le cœur lors de tes recherches.
+                  {favorites.length === 0 
+                    ? "Ajoute des musiques à tes favoris en cliquant sur le cœur lors de tes recherches."
+                    : "Essayez de modifier votre recherche dans vos favoris."}
                 </p>
               </div>
             ) : (
               <div className="mx-grid">
-                {favorites.map((track, index) => {
+                {filteredLibrary.map((track, index) => {
                   const isCurrent = currentTrack?.id === track.id;
 
                   return (
                     <div
                       key={track.id}
-                      onClick={() => handlePlayTrack(index)}
+                      onClick={() => handleCardClick(index)}
                       className={`mx-card ${isCurrent ? 'active' : ''}`}
                     >
                       <div className="mx-card-img-wrapper">
