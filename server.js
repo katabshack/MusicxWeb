@@ -36,7 +36,7 @@ const cleanOldDownloads = (currentVideoId) => {
   }
 };
 
-// Route de recherche ultra-stable via yt-search
+// Route de recherche locale et en ligne via yt-search
 app.get('/api/search', async (req, res) => {
   try {
     const query = req.query.q;
