@@ -1,6 +1,9 @@
 const express = require('express');
 const cors = require('cors');
-const axios = require('axios');
+const yts = require('yt-search');
+const { Ytdl, Quality } = require('@distube/ytdl-core');
+const fs = require('fs');
+const path = require('path');
 
 const app = express();
 
@@ -12,7 +15,28 @@ app.use(cors({
 
 app.use(express.json());
 
-// Route de recherche via l'API Piped (contourne les blocages IP sur Render)
+const yt = new Ytdl();
+
+const downloadsDir = path.join(__dirname, 'downloads');
+if (!fs.existsSync(downloadsDir)) {
+  fs.mkdirSync(downloadsDir, { recursive: true });
+}
+
+// Nettoyage des anciens fichiers téléchargés
+const cleanOldDownloads = (currentVideoId) => {
+  try {
+    const files = fs.readdirSync(downloadsDir);
+    for (const file of files) {
+      if (!file.includes(currentVideoId)) {
+        fs.unlinkSync(path.join(downloadsDir, file));
+      }
+    }
+  } catch (err) {
+    console.error("Erreur lors du nettoyage:", err);
+  }
+};
+
+// Route de recherche ultra-stable via yt-search
 app.get('/api/search', async (req, res) => {
   try {
     const query = req.query.q;
@@ -20,21 +44,13 @@ app.get('/api/search', async (req, res) => {
     
     if (!query) return res.status(400).json({ error: 'Paramètre de recherche manquant' });
 
-    const response = await axios.get(`https://pipedapi.kavin.rocks/search?q=${encodeURIComponent(query)}&filter=videos`, {
-      headers: { 'User-Agent': 'Mozilla/5.0' },
-      timeout: 10000
-    });
-
-    const items = response.data.items || [];
-    const videos = items.slice(0, 15).map(v => {
-      const videoId = v.url ? v.url.replace('/watch?v=', '') : '';
-      return {
-        id: videoId,
-        title: v.title,
-        artist: v.uploaderName,
-        cover: v.thumbnail
-      };
-    }).filter(v => v.id);
+    const r = await yts(query);
+    const videos = r.videos.slice(0, 15).map(v => ({
+      id: v.videoId,
+      title: v.title,
+      artist: v.author.name,
+      cover: v.thumbnail
+    }));
 
     res.json(videos);
   } catch (err) {
@@ -43,31 +59,74 @@ app.get('/api/search', async (req, res) => {
   }
 });
 
-// Route de streaming via l'API Piped
+// Route de streaming avec support des Range requests
 app.get('/api/stream', async (req, res) => {
   const videoId = req.query.id;
   if (!videoId) return res.status(400).json({ error: 'ID de vidéo manquant' });
 
+  const filePath = path.join(downloadsDir, `${videoId}.mp3`);
+  const videoURL = `https://www.youtube.com/watch?v=${videoId}`;
+
+  req.setTimeout(120000);
+
   try {
-    console.log(`[API STREAM] Récupération du flux pour la vidéo : ${videoId}`);
+    if (!fs.existsSync(filePath) || fs.statSync(filePath).size < 1000) {
+      cleanOldDownloads(videoId);
+      console.log(`[API STREAM] Téléchargement pour la vidéo : ${videoId}`);
+      
+      const info = await yt.getInfo(videoURL);
+      const audioStream = await yt.download(info, { 
+        quality: Quality.HighestAudio, 
+        filter: { hasAudio: true, hasVideo: false } 
+      });
 
-    const response = await axios.get(`https://pipedapi.kavin.rocks/streams/${videoId}`, {
-      headers: { 'User-Agent': 'Mozilla/5.0' },
-      timeout: 10000
-    });
+      const fileStream = fs.createWriteStream(filePath);
+      audioStream.pipe(fileStream);
 
-    const audioStreams = response.data.audioStreams;
-    if (audioStreams && audioStreams.length > 0) {
-      const bestAudio = audioStreams.reduce((prev, curr) => (curr.bitrate > prev.bitrate) ? curr : prev);
-      return res.redirect(bestAudio.url);
+      await new Promise((resolve, reject) => {
+        fileStream.on('finish', resolve);
+        fileStream.on('error', reject);
+        audioStream.on('error', reject);
+      });
+      console.log(`[API STREAM] Téléchargement terminé : ${videoId}.mp3`);
+    }
+
+    const stat = fs.statSync(filePath);
+    const fileSize = stat.size;
+    const range = req.headers.range;
+
+    if (range) {
+      const parts = range.replace(/bytes=/, "").split("-");
+      const start = parseInt(parts[0], 10);
+      const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+      const chunksize = (end - start) + 1;
+      const file = fs.createReadStream(filePath, { start, end });
+      
+      res.writeHead(206, {
+        'Content-Range': `bytes ${start}-${end}/${fileSize}`,
+        'Accept-Ranges': 'bytes',
+        'Content-Length': chunksize,
+        'Content-Type': 'audio/mpeg',
+        'Access-Control-Allow-Origin': '*'
+      });
+      file.pipe(res);
     } else {
-      res.status(404).json({ error: 'Aucun flux audio disponible' });
+      res.writeHead(200, {
+        'Content-Length': fileSize,
+        'Content-Type': 'audio/mpeg',
+        'Accept-Ranges': 'bytes',
+        'Access-Control-Allow-Origin': '*'
+      });
+      fs.createReadStream(filePath).pipe(res);
     }
 
   } catch (err) {
     console.error("[API STREAM] Erreur:", err.message);
+    if (fs.existsSync(filePath)) {
+      try { fs.unlinkSync(filePath); } catch(e) {}
+    }
     if (!res.headersSent) {
-      res.status(500).json({ error: 'Impossible de lire ce morceau' });
+      res.status(500).json({ error: 'Impossible de traiter ce morceau' });
     }
   }
 });
