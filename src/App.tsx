@@ -10,7 +10,7 @@ interface Track {
 }
 
 const SERVER_URL = import.meta.env.PROD 
-  ? 'https://musicx-backend-85qn.onrender.com' 
+  ? 'https://foothold-magnitude-wife.ngrok-free.dev' 
   : 'http://localhost:3001';
 
 export default function App() {
