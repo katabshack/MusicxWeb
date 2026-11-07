@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Search, Play, Pause, Music, Sparkles, Loader2, SkipBack, SkipForward, Home, Library, Heart, Shuffle, Repeat, Volume2, VolumeX } from 'lucide-react';
+import { Search, Play, Pause, Music, Sparkles, Loader2, SkipBack, SkipForward, Home, Library, Heart, Shuffle, Repeat, Volume2, VolumeX, Maximize2, Minimize2, ChevronDown } from 'lucide-react';
 import axios from 'axios';
 
 interface Track {
@@ -38,6 +38,7 @@ export default function App() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoadingTrack, setIsLoadingTrack] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [isFullScreen, setIsFullScreen] = useState(false); // État pour la vue plein écran
 
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -145,7 +146,6 @@ export default function App() {
     }
   };
 
-  // Media Session API enrichie pour forcer la main au système mobile
   useEffect(() => {
     if (!('mediaSession' in navigator)) return;
 
@@ -246,7 +246,6 @@ export default function App() {
     }
   };
 
-  // Gestion ultra-robuste de la fin de piste pour forcer l'enchaînement en arrière-plan
   useEffect(() => {
     const audioElement = audioRef.current;
     if (!audioElement) return;
@@ -442,9 +441,15 @@ export default function App() {
         )}
       </main>
 
+      {/* FOOTER / LECTEUR EN BAS */}
       {currentTrack && (
         <footer className="mx-footer">
-          <div className="mx-player-left">
+          <div 
+            className="mx-player-left" 
+            onClick={() => setIsFullScreen(true)} 
+            style={{ cursor: 'pointer' }}
+            title="Agrandir en plein écran"
+          >
             <div className="mx-player-cover">
               <img src={currentTrack.cover} alt={currentTrack.title} />
             </div>
@@ -509,8 +514,16 @@ export default function App() {
             </div>
           </div>
 
-          <div className="mx-player-right">
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', justifyContent: 'flex-end' }}>
+          <div className="mx-player-right" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <button 
+              onClick={() => setIsFullScreen(true)}
+              className="mx-ctrl-btn"
+              title="Plein écran"
+            >
+              <Maximize2 size={18} />
+            </button>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <button 
                 onClick={() => {
                   const newMuted = !isMuted;
@@ -539,6 +552,90 @@ export default function App() {
             </div>
           </div>
         </footer>
+      )}
+
+      {/* VUE PLEIN ÉCRAN (MODAL SPOTIFY-LIKE) */}
+      {isFullScreen && currentTrack && (
+        <div className="mx-fullscreen-overlay">
+          <div className="mx-fullscreen-header">
+            <button 
+              onClick={() => setIsFullScreen(false)} 
+              className="mx-ctrl-btn"
+              title="Réduire"
+            >
+              <ChevronDown size={28} />
+            </button>
+            <span style={{ fontWeight: 600, fontSize: '0.95rem' }}>Lecture en cours</span>
+            <div style={{ width: 32 }}></div> {/* Espaceur pour centrer */}
+          </div>
+
+          <div className="mx-fullscreen-content">
+            <div className="mx-fullscreen-cover-wrapper">
+              <img src={currentTrack.cover} alt={currentTrack.title} className="mx-fullscreen-cover" />
+            </div>
+
+            <div className="mx-fullscreen-meta">
+              <div>
+                <h2 className="mx-fullscreen-title">{currentTrack.title}</h2>
+                <p className="mx-fullscreen-artist">{currentTrack.artist}</p>
+              </div>
+            </div>
+
+            <div className="mx-fullscreen-controls-container">
+              <div className="mx-progress-container" style={{ width: '100%', marginBottom: '20px' }}>
+                <span>{formatTime(currentTime)}</span>
+                <input
+                  type="range"
+                  min={0}
+                  max={duration || 100}
+                  value={currentTime}
+                  onChange={(e) => {
+                    const time = Number(e.target.value);
+                    if (audioRef.current) audioRef.current.currentTime = time;
+                    setCurrentTime(time);
+                  }}
+                  className="mx-range-input"
+                />
+                <span>{formatTime(duration)}</span>
+              </div>
+
+              <div className="mx-player-controls" style={{ justifyContent: 'center', gap: '24px' }}>
+                <button 
+                  onClick={() => setIsShuffle(!isShuffle)} 
+                  className={`mx-ctrl-btn ${isShuffle ? 'active' : ''}`}
+                >
+                  <Shuffle size={20} />
+                </button>
+                <button onClick={handlePrev} className="mx-ctrl-btn" style={{ transform: 'scale(1.2)' }}>
+                  <SkipBack size={22} fill="currentColor" />
+                </button>
+                <button
+                  onClick={togglePlayPause}
+                  disabled={isLoadingTrack}
+                  className="mx-play-main-btn"
+                  style={{ width: '60px', height: '60px' }}
+                >
+                  {isLoadingTrack ? (
+                    <Loader2 size={24} className="animate-spin" style={{ color: '#000' }} />
+                  ) : isPlaying ? (
+                    <Pause size={24} fill="currentColor" />
+                  ) : (
+                    <Play size={24} fill="currentColor" style={{ marginLeft: '2px' }} />
+                  )}
+                </button>
+                <button onClick={handleNext} className="mx-ctrl-btn" style={{ transform: 'scale(1.2)' }}>
+                  <SkipForward size={22} fill="currentColor" />
+                </button>
+                <button 
+                  onClick={() => setIsRepeat(!isRepeat)} 
+                  className={`mx-ctrl-btn ${isRepeat ? 'active' : ''}`}
+                >
+                  <Repeat size={20} />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
